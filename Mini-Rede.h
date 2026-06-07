@@ -7,6 +7,7 @@ const int TAM_USERNAME = 50;
 const int TAM_NOME = 100;
 const int TAM_TEXTO = 280;
 const int TAM_COMANDO = 30;
+const int TAM_HASH = 101;  
 
 // TODO: definir as structs principais do trabalho.
 //
@@ -22,12 +23,76 @@ const int TAM_COMANDO = 30;
 // Os campos de cada struct fazem parte do projeto dos alunos.
 
 struct MiniRede {
-    // TODO: declarar aqui os ponteiros/estruturas principais da rede.
-    //
-    // Exemplos de responsabilidades:
-    // - usuarios armazenados por id
-    // - usuarios acessiveis por username
-    // - publicacoes cadastradas
+    Nodo_Arvore* raizUsuarios;
+    Tabela_Hash  tabelaUsernames; // Hash para busca rápida por username
+    Nodo_Lista_Publicacoes*  publicacoes;     // Lista encadeada de todas as publicações
+    int         totalUsuarios;
+    int         totalPublicacoes;
+};
+
+struct Usuario {
+    int id;
+    char username[TAM_USERNAME];
+    char nome_completo[TAM_NOME];
+
+    Nodo_Seguindo seguindo;
+    Nodo_Seguindo posts;
+    Fila notificação;
+};
+
+struct Nodo_Seguindo {
+    int ID_Usuario;
+    Nodo_Seguindo* prox;
+};
+
+struct Nodo_Curtidas {
+    int ID_Usuario;
+    Nodo_Curtidas* prox;
+};
+
+struct Nodo_Lista_Publicacoes {
+    Publicacao* publicacao;
+    Nodo_Lista_Publicacoes* prox;
+};
+
+struct Publicacao {
+    int ID;
+    int ID_Autor;
+    char texto[TAM_TEXTO];
+    int n_curtidas;
+    Nodo_Curtidas* curtidas;
+};
+
+struct Notificacao {
+    char tipo[10];
+    int ID_Remetente;
+    int ID_post;
+};
+
+struct Nodo_Fila{
+    Notificacao dado;
+    Nodo_Fila* prox;
+};
+
+struct Fila {
+    Nodo_Fila* inicio;
+    Nodo_Fila* fim;
+};
+
+struct Nodo_Arvore {
+    Usuario* usuario;
+    Nodo_Arvore* esq;
+    Nodo_Arvore* dir;
+};
+
+struct Nodo_Hash {
+    char username[TAM_USERNAME];
+    Usuario* usuario;
+    Nodo_Hash* prox;
+};
+
+struct Tabela_Hash {
+    Nodo_Hash* tabela[TAM_HASH];
 };
 
 void inicializarMiniRede(MiniRede& rede);
