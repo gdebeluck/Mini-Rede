@@ -2,98 +2,121 @@
 #define MINI_REDE_H
 
 #include <iostream>
+#include <cstring>
 
 const int TAM_USERNAME = 50;
-const int TAM_NOME = 100;
-const int TAM_TEXTO = 280;
-const int TAM_COMANDO = 30;
-const int TAM_HASH = 101;  
+const int TAM_NOME     = 100;
+const int TAM_TEXTO    = 280;
+const int TAM_COMANDO  = 30;
+const int TAM_HASH     = 101;
 
-// TODO: definir as structs principais do trabalho.
-//
-// Sugestao de structs que provavelmente serao necessarias:
-// - Usuario
-// - Publicacao
-// - MiniRede
-// - nos para lista encadeada
-// - nos para arvore binaria de usuarios por id
-// - nos para tabela hash de usernames
-// - nos para fila de notificacoes
-//
-// Os campos de cada struct fazem parte do projeto dos alunos.
-
-struct MiniRede {
-    Nodo_Arvore* raizUsuarios;
-    Tabela_Hash  tabelaUsernames; // Hash para busca rápida por username
-    Nodo_Lista_Publicacoes*  publicacoes;     // Lista encadeada de todas as publicações
-    int         totalUsuarios;
-    int         totalPublicacoes;
-};
-
-struct Usuario {
-    int id;
-    char username[TAM_USERNAME];
-    char nome_completo[TAM_NOME];
-
-    Nodo_Seguindo seguindo;
-    Nodo_Seguindo posts;
-    Fila notificação;
-};
-
-struct Nodo_Seguindo {
-    int ID_Usuario;
-    Nodo_Seguindo* prox;
-};
-
-struct Nodo_Curtidas {
-    int ID_Usuario;
-    Nodo_Curtidas* prox;
-};
-
-struct Nodo_Lista_Publicacoes {
-    Publicacao* publicacao;
-    Nodo_Lista_Publicacoes* prox;
-};
-
-struct Publicacao {
-    int ID;
-    int ID_Autor;
-    char texto[TAM_TEXTO];
-    int n_curtidas;
-    Nodo_Curtidas* curtidas;
-};
+// ─────────────────────────────────────────────
+// Notificação e Fila
+// ─────────────────────────────────────────────
 
 struct Notificacao {
-    char tipo[10];
-    int ID_Remetente;
-    int ID_post;
+    char tipo[10];      // "FOLLOW" ou "LIKE"
+    int  idRemetente;
+    int  idPost;        // usado apenas para LIKE
 };
 
-struct Nodo_Fila{
+struct NodoFila {
     Notificacao dado;
-    Nodo_Fila* prox;
+    NodoFila*   prox;
 };
 
 struct Fila {
-    Nodo_Fila* inicio;
-    Nodo_Fila* fim;
+    NodoFila* inicio;
+    NodoFila* fim;
 };
 
-struct Nodo_Arvore {
-    Usuario* usuario;
-    Nodo_Arvore* esq;
-    Nodo_Arvore* dir;
+// ─────────────────────────────────────────────
+// Listas encadeadas específicas
+// ─────────────────────────────────────────────
+
+struct NodoSeguindo {
+    int          idUsuario;
+    NodoSeguindo* prox;
 };
 
-struct Nodo_Hash {
-    char username[TAM_USERNAME];
-    Usuario* usuario;
-    Nodo_Hash* prox;
+struct NodoQuemCurtiu {
+    int            idUsuario;
+    NodoQuemCurtiu* prox;
 };
 
-struct Tabela_Hash {
-    Nodo_Hash* tabela[TAM_HASH];
+// Declaração antecipada
+struct Publicacao;
+
+struct NodoPublicacaoLista {
+    Publicacao*          pub;
+    NodoPublicacaoLista* prox;
 };
+
+// ─────────────────────────────────────────────
+// Publicação
+// ─────────────────────────────────────────────
+
+struct Publicacao {
+    int             id;
+    int             idAutor;
+    int             timestamp;
+    char            texto[TAM_TEXTO];
+    int             curtidas;
+    NodoQuemCurtiu* quemCurtiu;
+};
+
+// ─────────────────────────────────────────────
+// Usuário
+// ─────────────────────────────────────────────
+
+struct Usuario {
+    int                  id;
+    char                 username[TAM_USERNAME];
+    char                 nomeCompleto[TAM_NOME];
+    NodoSeguindo*        seguindo;
+    NodoPublicacaoLista* posts;
+    Fila                 notificacoes;
+};
+
+// ─────────────────────────────────────────────
+// Árvore BST de usuários por id
+// ─────────────────────────────────────────────
+
+struct NodoArvore {
+    Usuario*    usuario;
+    NodoArvore* esq;
+    NodoArvore* dir;
+};
+
+// ─────────────────────────────────────────────
+// Tabela Hash de usuários por username
+// ─────────────────────────────────────────────
+
+struct NodoHash {
+    char      username[TAM_USERNAME];
+    Usuario*  usuario;
+    NodoHash* prox;
+};
+
+struct TabelaHash {
+    NodoHash* tabela[TAM_HASH];
+};
+
+// ─────────────────────────────────────────────
+// MiniRede principal
+// ─────────────────────────────────────────────
+
+struct MiniRede {
+    NodoArvore*          raizUsuarios;
+    TabelaHash           tabelaUsernames;
+    NodoPublicacaoLista* publicacoes;
+    int                  totalUsuarios;
+    int                  totalPublicacoes;
+};
+
+// ─────────────────────────────────────────────
+// Funções principais (interface pública)
+// ─────────────────────────────────────────────
 
 void inicializarMiniRede(MiniRede& rede);
 void liberarMiniRede(MiniRede& rede);
@@ -114,16 +137,50 @@ void consultarNotificacoes(MiniRede& rede, int idUsuario, int k, std::ostream& s
 void gerarFeed(MiniRede& rede, int idUsuario, int k, std::ostream& saida);
 void listarTopPosts(MiniRede& rede, int k, std::ostream& saida);
 
-// TODO: declarar aqui as funcoes auxiliares escolhidas pelo grupo.
-//
-// Exemplos de responsabilidades auxiliares:
-// - buscar usuario por id
-// - buscar usuario por username
-// - buscar publicacao por id
-// - inserir/listar/liberar arvore
-// - inserir/buscar/liberar tabela hash
-// - enfileirar/desenfileirar notificacoes
-// - manipular listas encadeadas
-// - ordenar vetores auxiliares para feed e ranking
+// ─────────────────────────────────────────────
+// Funções auxiliares
+// ─────────────────────────────────────────────
+
+// Hash
+int       calcularHash(const char username[]);
+void      inserirNaHash(TabelaHash& tabela, Usuario* usuario);
+Usuario*  buscarNaHash(TabelaHash& tabela, const char username[]);
+void      liberarHash(TabelaHash& tabela);
+
+// Árvore BST
+void      inserirNaArvore(NodoArvore*& raiz, Usuario* usuario);
+Usuario*  buscarNaArvore(NodoArvore* raiz, int id);
+void      listarArvoreEmOrdem(NodoArvore* raiz, std::ostream& saida);
+void      liberarArvore(NodoArvore* raiz);
+
+// Fila
+void      enfileirar(Fila& fila, Notificacao notif);
+bool      desenfileirar(Fila& fila, Notificacao& notif);
+bool      filaVazia(const Fila& fila);
+void      liberarFila(Fila& fila);
+
+// Listas de seguindo
+void      inserirSeguindo(NodoSeguindo*& lista, int idUsuario);
+bool      estaSeguindo(NodoSeguindo* lista, int idUsuario);
+void      listarSeguindoEmOrdem(NodoSeguindo* lista, TabelaHash& tabela, NodoArvore* raiz, std::ostream& saida);
+void      liberarListaSeguindo(NodoSeguindo*& lista);
+
+// Listas de quem curtiu
+void      inserirQuemCurtiu(NodoQuemCurtiu*& lista, int idUsuario);
+bool      jaCurtiu(NodoQuemCurtiu* lista, int idUsuario);
+void      liberarListaQuemCurtiu(NodoQuemCurtiu*& lista);
+
+// Lista de publicações
+void      inserirPublicacao(NodoPublicacaoLista*& lista, Publicacao* pub);
+Publicacao* buscarPublicacao(NodoPublicacaoLista* lista, int idPost);
+void      liberarListaPublicacoes(NodoPublicacaoLista*& lista, bool liberarPub);
+
+// Ordenação (insertion sort em vetor auxiliar)
+void      ordenarFeed(Publicacao** vetor, int n);
+void      ordenarTopPosts(Publicacao** vetor, int n);
+
+// Impressão
+void      imprimirUsuario(Usuario* u, std::ostream& saida);
+void      imprimirPublicacao(Publicacao* p, std::ostream& saida);
 
 #endif
