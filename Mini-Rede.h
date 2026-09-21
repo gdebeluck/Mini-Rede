@@ -10,14 +10,11 @@ const int TAM_TEXTO    = 280;
 const int TAM_COMANDO  = 30;
 const int TAM_HASH     = 101;
 
-// ─────────────────────────────────────────────
-// Notificação e Fila
-// ─────────────────────────────────────────────
-
 struct Notificacao {
-    char tipo[10];      // "FOLLOW" ou "LIKE"
+    char tipo[15];      // "FOLLOW", "LIKE" ou "COMMENT"
     int  idRemetente;
-    int  idPost;        // usado apenas para LIKE
+    int  idPost;        // usado para LIKE e COMMENT
+    int  idComentario;  // usado apenas para COMMENT
 };
 
 struct NodoFila {
@@ -30,31 +27,34 @@ struct Fila {
     NodoFila* fim;
 };
 
-// ─────────────────────────────────────────────
-// Listas encadeadas específicas
-// ─────────────────────────────────────────────
+struct Comentario {
+    int  id;
+    int  idAutor;
+    int  idPost;
+    char texto[TAM_TEXTO];
+};
+
+struct NodoComentario {
+    Comentario*    comentario;
+    NodoComentario* prox;
+};
 
 struct NodoSeguindo {
-    int          idUsuario;
+    int           idUsuario;
     NodoSeguindo* prox;
 };
 
 struct NodoQuemCurtiu {
-    int            idUsuario;
+    int             idUsuario;
     NodoQuemCurtiu* prox;
 };
 
-// Declaração antecipada
 struct Publicacao;
 
 struct NodoPublicacaoLista {
     Publicacao*          pub;
     NodoPublicacaoLista* prox;
 };
-
-// ─────────────────────────────────────────────
-// Publicação
-// ─────────────────────────────────────────────
 
 struct Publicacao {
     int             id;
@@ -63,11 +63,9 @@ struct Publicacao {
     char            texto[TAM_TEXTO];
     int             curtidas;
     NodoQuemCurtiu* quemCurtiu;
+    NodoComentario* comentarios;  // lista de comentários
+    int             totalComentarios;
 };
-
-// ─────────────────────────────────────────────
-// Usuário
-// ─────────────────────────────────────────────
 
 struct Usuario {
     int                  id;
@@ -78,19 +76,11 @@ struct Usuario {
     Fila                 notificacoes;
 };
 
-// ─────────────────────────────────────────────
-// Árvore BST de usuários por id
-// ─────────────────────────────────────────────
-
 struct NodoArvore {
     Usuario*    usuario;
     NodoArvore* esq;
     NodoArvore* dir;
 };
-
-// ─────────────────────────────────────────────
-// Tabela Hash de usuários por username
-// ─────────────────────────────────────────────
 
 struct NodoHash {
     char      username[TAM_USERNAME];
@@ -102,21 +92,14 @@ struct TabelaHash {
     NodoHash* tabela[TAM_HASH];
 };
 
-// ─────────────────────────────────────────────
-// MiniRede principal
-// ─────────────────────────────────────────────
-
 struct MiniRede {
     NodoArvore*          raizUsuarios;
     TabelaHash           tabelaUsernames;
     NodoPublicacaoLista* publicacoes;
     int                  totalUsuarios;
     int                  totalPublicacoes;
+    int                  totalComentarios;  // contador global de ids de comentários
 };
-
-// ─────────────────────────────────────────────
-// Funções principais (interface pública)
-// ─────────────────────────────────────────────
 
 void inicializarMiniRede(MiniRede& rede);
 void liberarMiniRede(MiniRede& rede);
@@ -128,58 +111,56 @@ void buscarUsuarioPorUsername(MiniRede& rede, const char username[], std::ostrea
 void listarUsuarios(MiniRede& rede, std::ostream& saida);
 
 void seguirUsuario(MiniRede& rede, int idSeguidor, int idSeguido, std::ostream& saida);
+void pararDeSeguir(MiniRede& rede, int idSeguidor, int idSeguido, std::ostream& saida);  // EXTRA: UNFOLLOW
 void listarSeguindo(MiniRede& rede, int idUsuario, std::ostream& saida);
 
 void cadastrarPublicacao(MiniRede& rede, int idPost, int idAutor, int timestamp, const char texto[], std::ostream& saida);
+void removerPublicacao(MiniRede& rede, int idPost, int idAutor, std::ostream& saida);     // EXTRA: REMOVE_POST
 void curtirPublicacao(MiniRede& rede, int idUsuario, int idPost, std::ostream& saida);
+
+void comentarPublicacao(MiniRede& rede, int idUsuario, int idPost, const char texto[], std::ostream& saida); // EXTRA: COMMENT
+void listarComentarios(MiniRede& rede, int idPost, std::ostream& saida);                  // EXTRA: LIST_COMMENTS
 
 void consultarNotificacoes(MiniRede& rede, int idUsuario, int k, std::ostream& saida);
 void gerarFeed(MiniRede& rede, int idUsuario, int k, std::ostream& saida);
 void listarTopPosts(MiniRede& rede, int k, std::ostream& saida);
 
-// ─────────────────────────────────────────────
-// Funções auxiliares
-// ─────────────────────────────────────────────
-
-// Hash
 int       calcularHash(const char username[]);
 void      inserirNaHash(TabelaHash& tabela, Usuario* usuario);
 Usuario*  buscarNaHash(TabelaHash& tabela, const char username[]);
 void      liberarHash(TabelaHash& tabela);
 
-// Árvore BST
 void      inserirNaArvore(NodoArvore*& raiz, Usuario* usuario);
 Usuario*  buscarNaArvore(NodoArvore* raiz, int id);
 void      listarArvoreEmOrdem(NodoArvore* raiz, std::ostream& saida);
 void      liberarArvore(NodoArvore* raiz);
 
-// Fila
 void      enfileirar(Fila& fila, Notificacao notif);
 bool      desenfileirar(Fila& fila, Notificacao& notif);
 bool      filaVazia(const Fila& fila);
 void      liberarFila(Fila& fila);
 
-// Listas de seguindo
 void      inserirSeguindo(NodoSeguindo*& lista, int idUsuario);
+bool      removerSeguindo(NodoSeguindo*& lista, int idUsuario);  // EXTRA: para UNFOLLOW
 bool      estaSeguindo(NodoSeguindo* lista, int idUsuario);
-void      listarSeguindoEmOrdem(NodoSeguindo* lista, TabelaHash& tabela, NodoArvore* raiz, std::ostream& saida);
+void      listarSeguindoEmOrdem(NodoSeguindo* lista, NodoArvore* raiz, std::ostream& saida);
 void      liberarListaSeguindo(NodoSeguindo*& lista);
 
-// Listas de quem curtiu
 void      inserirQuemCurtiu(NodoQuemCurtiu*& lista, int idUsuario);
 bool      jaCurtiu(NodoQuemCurtiu* lista, int idUsuario);
 void      liberarListaQuemCurtiu(NodoQuemCurtiu*& lista);
 
-// Lista de publicações
-void      inserirPublicacao(NodoPublicacaoLista*& lista, Publicacao* pub);
+void        inserirPublicacao(NodoPublicacaoLista*& lista, Publicacao* pub);
 Publicacao* buscarPublicacao(NodoPublicacaoLista* lista, int idPost);
-void      liberarListaPublicacoes(NodoPublicacaoLista*& lista, bool liberarPub);
+bool        removerDaListaPublicacoes(NodoPublicacaoLista*& lista, int idPost, bool liberarPub); // EXTRA
+void        liberarListaPublicacoes(NodoPublicacaoLista*& lista, bool liberarPub);
 
-// Ordenação (insertion sort em vetor auxiliar)
+void        inserirComentario(NodoComentario*& lista, Comentario* c);
+void        liberarListaComentarios(NodoComentario*& lista);
+
 void      ordenarFeed(Publicacao** vetor, int n);
 void      ordenarTopPosts(Publicacao** vetor, int n);
 
-// Impressão
 void      imprimirUsuario(Usuario* u, std::ostream& saida);
 void      imprimirPublicacao(Publicacao* p, std::ostream& saida);
 
